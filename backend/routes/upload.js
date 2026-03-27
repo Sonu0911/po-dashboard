@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const pdfParse = require('pdf-parse');
 const fs = require('fs');
 const pool = require('../db');
+const pdfParse = require('pdf-parse');
 
 router.post('/', async (req, res) => {
   try {
@@ -12,10 +12,15 @@ router.post('/', async (req, res) => {
     const pdfData = await pdfParse(dataBuffer);
     const text = pdfData.text;
 
-    // PDF se data extract karo
-    const poData = extractPOData(text);
+    console.log("PDF TEXT:", text.substring(0, 500));
 
-    // Database mein save karo
+    const poData = extractPOData(text);
+    console.log("EXTRACTED:", poData);
+
+    if (!poData.po_number) {
+      return res.status(400).json({ error: 'PO number extract nahi hua — check console logs' });
+    }
+
     const result = await pool.query(`
       INSERT INTO purchase_orders 
         (po_number, brand, supplier, buyer, currency, total_units, 
@@ -34,56 +39,69 @@ router.post('/', async (req, res) => {
       poData.port, poData.incoterms, poData.fabrication, poData.category
     ]);
 
-    // Cleanup uploaded file
     fs.unlinkSync(req.file.path);
-
-    res.json({ 
-      message: 'PO successfully import hua!', 
-      data: result.rows[0] 
-    });
+    res.json({ message: 'PO successfully import hua!', data: result.rows[0] });
   } catch (err) {
+    console.log("FULL ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 function extractPOData(text) {
-  const get = (pattern) => {
-    const match = text.match(pattern);
-    return match ? match[1].trim() : null;
+  const get = (patterns) => {
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) return match[1].trim();
+    }
+    return null;
   };
 
-  // Brand detect karo
   let brand = 'Unknown';
-  if (text.includes('boohoo')) brand = 'boohoo';
-  else if (text.includes('PrettyLittleThing')) brand = 'PrettyLittleThing';
-  else if (text.includes('coast')) brand = 'Coast';
+  if (text.toLowerCase().includes('boohoo')) brand = 'boohoo';
+  if (text.toLowerCase().includes('prettylittlething')) brand = 'PrettyLittleThing';
+  if (text.toLowerCase().includes('coast')) brand = 'Coast';
 
-  // Currency detect karo
-  const currency = text.includes('All Amounts in USD') ? 'USD' : 'GBP';
+  const currency = text.includes('USD') ? 'USD' : 'GBP';
 
-  const totalNet = parseFloat(get(/TOTAL NET\s+([\d.]+)/) || '0');
+  const totalNet = parseFloat(get([
+    /TOTAL NET\s*([\d.]+)/,
+    /TOTALNET\s*([\d.]+)/,
+  ]) || '0');
+
+  const totalUnits = parseInt(get([
+    /TOTAL UNITS\s*(\d+)/,
+    /TOTALUNITS\s*(\d+)/,
+  ]) || '0');
+
   const fxRate = currency === 'USD' ? 0.79 : 1;
 
   return {
-    po_number: get(/Purchase Order No\s+(\d+)/),
+    po_number: get([
+      /Purchase Order No\s*(\d+)/,
+      /PurchaseOrderNo\s*(\d+)/,
+    ]),
     brand,
-    supplier: get(/Factory Name\s+(.+)/),
-    buyer: get(/Buyer Name\s+(.+)/),
+    supplier: get([
+      /Factory Name\s*(.+)/,
+      /FactoryName\s*(.+)/,
+    ]),
+    buyer: get([
+      /Buyer Name\s*(.+)/,
+      /BuyerName\s*(.+)/,
+    ]),
     currency,
-    total_units: parseInt(get(/TOTAL UNITS\s+(\d+)/) || '0'),
+    total_units: totalUnits,
     total_net: totalNet,
     gbp_value: parseFloat((totalNet * fxRate).toFixed(2)),
-    ppu: parseFloat(get(/Each\s+([\d.]+)/) || '0'),
-    ex_factory_date: get(/Ex Factory Date\s+(\d{2}\/\d{2}\/\d{4})/),
-    delivery_date: get(/Delivery Date\s+(\d{2}\/\d{2}\/\d{4})/),
-    book_by_date: get(/Shipment Book with Forwarder By\s+(\d{2}\/\d{2}\/\d{4})/),
-    order_placed_date: get(/Date Order Placed\s+(\d{2}\/\d{2}\/\d{4})/),
-    freight: get(/Freight Method\s+(.+)/),
-    port: get(/Port of Loading\s+(.+)/),
-    incoterms: get(/Incoterms\s+(.+)/),
-    fabrication: get(/Fabrication\s+(.+)/),
+ppu: parseFloat(parseFloat(get([/Each([\d.]+)/]) || '0').toFixed(2)),
+    ex_factory_date: get([/Ex Factory Date\s*(\d{2}\/\d{2}\/\d{4})/, /ExFactoryDate\s*(\d{2}\/\d{2}\/\d{4})/]),
+    delivery_date: get([/Delivery Date\s*(\d{2}\/\d{2}\/\d{4})/, /DeliveryDate\s*(\d{2}\/\d{2}\/\d{4})/]),
+    book_by_date: get([/Shipment Book with Forwarder By\s*(\d{2}\/\d{2}\/\d{4})/, /ShipmentBookwithForwarderBy\s*(\d{2}\/\d{2}\/\d{4})/]),
+    order_placed_date: get([/Date Order Placed\s*(\d{2}\/\d{2}\/\d{4})/, /DateOrderPlaced\s*(\d{2}\/\d{2}\/\d{4})/]),
+    freight: get([/Freight Method\s*(\w+)/, /FreightMethod\s*(\w+)/]),
+    port: get([/Port of Loading\s*(\w+)/, /PortofLoading\s*(\w+)/]),
+    incoterms: get([/Incoterms\s*(\w+)/]),
+fabrication: text.includes('Faux Linen') ? 'Faux Linen' : text.includes('Linen Look') ? 'Linen Look' : text.includes('Mesh') ? 'Mesh' : 'N/A',
     category: text.includes('Dress') ? 'Dresses' : 'Tops',
   };
-}
-
-module.exports = router;
+}module.exports = router;
