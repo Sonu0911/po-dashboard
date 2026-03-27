@@ -8,8 +8,12 @@ const upload = multer({ dest: 'uploads/' });
 // cors({ origin: " https://successful-freedom-production-53ce.up.railway.app"
 //  })
 
+// app.use(cors({
+//   origin: "https://successful-freedom-production-53ce.up.railway.app"
+// }));
+
 app.use(cors({
-  origin: "https://successful-freedom-production-53ce.up.railway.app"
+  origin: "*"
 }));
 app.use(express.json());
 
