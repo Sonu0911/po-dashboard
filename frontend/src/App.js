@@ -5,7 +5,7 @@ import {
 } from "recharts";
 import axios from "axios";
 
-const API = "http://localhost:5000/api";
+const API = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 const BRAND_COLORS = {
   boohoo: "#FF3CAC",
   PrettyLittleThing: "#FF7F00",
