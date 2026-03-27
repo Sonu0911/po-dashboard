@@ -5,8 +5,8 @@ require('dotenv').config();
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
-
-app.use(cors());
+cors({ origin: " https://successful-freedom-production-53ce.up.railway.app"
+ })
 app.use(express.json());
 
 app.use('/api/pos', require('./routes/pos'));
