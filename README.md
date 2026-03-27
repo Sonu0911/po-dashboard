@@ -64,7 +64,7 @@ po-dashboard/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/po-dashboard.git
+git clone https://github.com/Sonu0911/po-dashboard.git
 cd po-dashboard
 ```
 
