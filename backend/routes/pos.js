@@ -36,11 +36,14 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Ek PO ki lines lao
+
+
+
+
 router.get('/:id/lines', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM po_lines WHERE po_number = $1',
+      'SELECT * FROM po_lines WHERE po_id = $1',
       [req.params.id]
     );
     res.json(result.rows);
@@ -48,4 +51,5 @@ router.get('/:id/lines', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 module.exports = router;
