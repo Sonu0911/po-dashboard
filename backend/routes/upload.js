@@ -40,15 +40,12 @@ router.post('/', async (req, res) => {
     ]);
 
     // Size data extract aur insert karo
-const sizeMatches = [...text.matchAll(/(?:Faux Linen|Linen Look|Mesh|Chiffon|Jersey)\s*(\d+)\s*\d{13}\s*(\d+)\s*Each/g)];
-console.log("SIZE MATCHES:", sizeMatches.length);
-
-if (sizeMatches.length > 0) {
-  await pool.query('DELETE FROM po_lines WHERE po_number = $1', [poData.po_number]);
-  for (const match of sizeMatches) {
+// Lines bhi insert karo
+if (pdfData && poData.lines && poData.lines.length > 0) {
+  for (const line of poData.lines) {
     await pool.query(
-      'INSERT INTO po_lines (po_number, size, quantity) VALUES ($1, $2, $3)',
-      [poData.po_number, match[1], parseInt(match[2])]
+      'INSERT INTO po_lines (po_id, size, qty, ean, ppu) VALUES ($1, $2, $3, $4, $5)',
+      [result.rows[0].id, line.size, line.qty, line.ean, line.ppu]
     );
   }
 }
