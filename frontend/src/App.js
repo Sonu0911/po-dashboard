@@ -403,7 +403,7 @@ export default function App() {
                           {lines.map((line, i) => (
                             <div key={i} style={{ background: accent + "18", border: `1px solid ${accent}33`, borderRadius: 8, padding: "8px 14px", textAlign: "center" }}>
                               <div style={{ fontSize: 10, color: "#666" }}>Size {line.size}</div>
-                              <div style={{ fontSize: 15, fontWeight: 800, color: accent }}>{line.quantity}</div>
+                            <div style={{ fontSize: 15, fontWeight: 800, color: accent }}>{line.qty || line.quantity}</div>
                               <div style={{ fontSize: 9, color: "#444" }}>units</div>
                             </div>
                           ))}
